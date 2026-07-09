@@ -10,10 +10,38 @@ import {
   updateDoc,
   setDoc,
 } from "firebase/firestore";
-import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
-
 const db = getFirestore();
-const storage = getStorage();
+
+// Converts a File object to a base64 string (without the data: prefix)
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+// Uploads a file to the crestlandpage GitHub repo via our API route
+// and returns a public CDN URL for it (no Firebase Storage involved).
+const uploadToGitHub = async (file, folder, safeName) => {
+  const contentBase64 = await fileToBase64(file);
+  const ext = file.name.split(".").pop();
+  const filename = `${safeName}.${ext}`;
+
+  const res = await fetch("/api/upload-to-github", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder, filename, contentBase64 }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`GitHub upload failed: ${errText}`);
+  }
+
+  const { url } = await res.json();
+  return url;
+};
 
 const CmsIndex = () => {
   const [indexPageData, setIndexPageData] = useState(null);
@@ -259,25 +287,21 @@ const CmsIndex = () => {
 
         console.log("ta", testimonialsArray)
 
-        // Upload teacher pictures to Firebase Storage
-        const storageRef = ref(storage, "teacherPictures");
-        const storageRef2 = ref(storage, "blogPictures");
+        // Upload teacher pictures to the crestlandpage GitHub repo (not Firebase Storage)
         const teacherPicturesPromises = teachersArray.map(async (teacher) => {
           if (teacher.teacherPicture instanceof File) {
-            const fileRef = ref(storageRef, `${teacher.teacherName}_${teacher.key}`);
-            await uploadBytes(fileRef, teacher.teacherPicture);
-            const downloadURL = await getDownloadURL(fileRef);
-            return { ...teacher, teacherPicture: downloadURL };
+            const safeName = `${teacher.teacherName}_${teacher.key}`.replace(/[^a-zA-Z0-9_-]/g, "-");
+            const url = await uploadToGitHub(teacher.teacherPicture, "teachers", safeName);
+            return { ...teacher, teacherPicture: url };
           }
           return teacher;
         });
         const blogPicturesPromises = testimonialsArray.map(async (blog) => {
           if (blog.testimonialimg instanceof File) {
-            const fileRef = ref(storageRef2, `${blog.parentName}_${blog.key}`);
-            await uploadBytes(fileRef, blog.testimonialimg);
-            const downloadURL = await getDownloadURL(fileRef);
-            console.log("downurl", downloadURL)
-            return { ...blog, testimonialimg: downloadURL };
+            const safeName = `${blog.parentName}_${blog.key}`.replace(/[^a-zA-Z0-9_-]/g, "-");
+            const url = await uploadToGitHub(blog.testimonialimg, "blog", safeName);
+            console.log("uploaded url", url)
+            return { ...blog, testimonialimg: url };
           }
           return blog;
         });
