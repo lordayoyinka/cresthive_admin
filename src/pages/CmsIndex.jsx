@@ -83,27 +83,6 @@ const CmsIndex = () => {
       };
     });
   };
-  const handleTestimonialFileInputChange = (field, file, teacherKey) => {
-
-
-    setIndexPageData((prevData) => {
-      const updatedTeachers = { ...prevData.testimonials };
-      updatedTeachers[teacherKey] = {
-        ...updatedTeachers[teacherKey],
-        [field]: file,
-      };
-
-
-      console.log("new data", updatedTeachers);
-      return {
-        ...prevData,
-        testimonials: updatedTeachers,
-      };
-    });
-  };
-
-
-
 
 
   const handleInputChange = (field, value, key) => {
@@ -250,7 +229,7 @@ const CmsIndex = () => {
       const count = propertiesArray.length;
       console.log("lenght", count)
 
-      prev[count] = { parentName: "", parentOccupation: "", testimonialText: "", testimonialimg: null }
+      prev[count] = { parentName: "", parentOccupation: "", testimonialText: "", testimonialimg: "", testimonialimg2: "", testimonialimg3: "" }
 
 
 
@@ -287,7 +266,9 @@ const CmsIndex = () => {
 
         console.log("ta", testimonialsArray)
 
-        // Upload teacher pictures to the crestlandpage GitHub repo (not Firebase Storage)
+        // Upload teacher/staff pictures to the crestlandpage GitHub repo (not Firebase Storage).
+        // Blog images are now plain URL strings typed into the CMS, so they need
+        // no upload step — testimonialsArray already holds the final values.
         const teacherPicturesPromises = teachersArray.map(async (teacher) => {
           if (teacher.teacherPicture instanceof File) {
             const safeName = `${teacher.teacherName}_${teacher.key}`.replace(/[^a-zA-Z0-9_-]/g, "-");
@@ -296,17 +277,8 @@ const CmsIndex = () => {
           }
           return teacher;
         });
-        const blogPicturesPromises = testimonialsArray.map(async (blog) => {
-          if (blog.testimonialimg instanceof File) {
-            const safeName = `${blog.parentName}_${blog.key}`.replace(/[^a-zA-Z0-9_-]/g, "-");
-            const url = await uploadToGitHub(blog.testimonialimg, "blog", safeName);
-            console.log("uploaded url", url)
-            return { ...blog, testimonialimg: url };
-          }
-          return blog;
-        });
         promises.push(Promise.all(teacherPicturesPromises));
-        promises2.push(Promise.all(blogPicturesPromises));
+        promises2.push(Promise.resolve(testimonialsArray));
 
         // Save data to Firestore
         const docRef = doc(db, "cms", "indexPage");
@@ -769,23 +741,29 @@ const CmsIndex = () => {
 
 
 
-                  <div className={isEditing ? "flex flex-col justify-center gap-6" : "flex items-center gap-6"}>
-
+                  <div>
+                    <label
+                      className="block text-lg font-semibold mb-2"
+                      htmlFor={`testimonialimg${index}`}
+                    >
+                      Blog Display Picture (top image URL):
+                    </label>
                     {isEditing ? (
-                      <div className="">
+                      <div>
                         <input
-                          className="border border-gray-300 text-sm rounded py-2 px-3"
-                          type="file"
+                          className="border m-2 border-gray-300 rounded w-full py-2 px-3"
+                          type="text"
+                          placeholder="https://example.com/image.jpg"
                           id={`testimonialimg${index}`}
+                          value={testimonial.testimonialimg || ""}
                           onChange={(e) =>
-                            handleTestimonialFileInputChange(
-                              `testimonialimg`,
-                              e.target.files[0],
+                            handleInputChange(
+                              `testimonials.${index}.testimonialimg`,
+                              e.target.value,
                               index
                             )
                           }
                         />
-
                         {testimonial.testimonialimg && (
                           <img
                             className="rounded-full w-12 h-12 mt-2"
@@ -794,15 +772,95 @@ const CmsIndex = () => {
                         )}
                       </div>
                     ) : (
-                      <img
-                        className="rounded-full w-12 h-12"
-                        src={testimonial.testimonialimg}
-                      />
+                      testimonial.testimonialimg && (
+                        <img
+                          className="rounded-full w-12 h-12"
+                          src={testimonial.testimonialimg}
+                        />
+                      )
                     )}
+                  </div>
 
+                  <div className="flex flex-col gap-4 mt-4">
+                    <div>
+                      <label
+                        className="block text-lg font-semibold mb-2"
+                        htmlFor={`testimonialimg2_${index}`}
+                      >
+                        Blog Column Picture 1 (URL):
+                      </label>
+                      {isEditing ? (
+                        <div>
+                          <input
+                            className="border m-2 border-gray-300 rounded w-full py-2 px-3"
+                            type="text"
+                            placeholder="https://example.com/image2.jpg"
+                            id={`testimonialimg2_${index}`}
+                            value={testimonial.testimonialimg2 || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                `testimonials.${index}.testimonialimg2`,
+                                e.target.value,
+                                index
+                              )
+                            }
+                          />
+                          {testimonial.testimonialimg2 && (
+                            <img
+                              className="w-32 h-24 object-cover mt-2"
+                              src={testimonial.testimonialimg2}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        testimonial.testimonialimg2 && (
+                          <img
+                            className="w-32 h-24 object-cover"
+                            src={testimonial.testimonialimg2}
+                          />
+                        )
+                      )}
+                    </div>
 
-
-
+                    <div>
+                      <label
+                        className="block text-lg font-semibold mb-2"
+                        htmlFor={`testimonialimg3_${index}`}
+                      >
+                        Blog Column Picture 2 (URL):
+                      </label>
+                      {isEditing ? (
+                        <div>
+                          <input
+                            className="border m-2 border-gray-300 rounded w-full py-2 px-3"
+                            type="text"
+                            placeholder="https://example.com/image3.jpg"
+                            id={`testimonialimg3_${index}`}
+                            value={testimonial.testimonialimg3 || ""}
+                            onChange={(e) =>
+                              handleInputChange(
+                                `testimonials.${index}.testimonialimg3`,
+                                e.target.value,
+                                index
+                              )
+                            }
+                          />
+                          {testimonial.testimonialimg3 && (
+                            <img
+                              className="w-32 h-24 object-cover mt-2"
+                              src={testimonial.testimonialimg3}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        testimonial.testimonialimg3 && (
+                          <img
+                            className="w-32 h-24 object-cover"
+                            src={testimonial.testimonialimg3}
+                          />
+                        )
+                      )}
+                    </div>
                   </div>
 
 
