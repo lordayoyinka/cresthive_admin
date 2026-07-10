@@ -7,6 +7,7 @@ import {
   KeyIcon,
   MailIcon,
   BriefcaseIcon,
+  DocumentTextIcon,
 } from "@heroicons/react/outline";
 
 import { BellIcon } from "@heroicons/react/outline";
@@ -52,6 +53,7 @@ const Sidebar = ({ children }) => {
 
     { name: "Tokens", icon: KeyIcon, href: "./TokensPage", current: false },
     { name: "CMS", icon: BriefcaseIcon, href: "./CmsPage", current: false },
+    { name: "Admissions", icon: DocumentTextIcon, href: "./AdmissionsIndex", current: false },
 
   ]);
 
@@ -63,6 +65,7 @@ const Sidebar = ({ children }) => {
     Messages: MailIcon,
     Tokens: KeyIcon,
     CMS: BriefcaseIcon,
+    Admissions: DocumentTextIcon,
   };
 
   function classNames(...classes) {
