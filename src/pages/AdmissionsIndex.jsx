@@ -5,7 +5,7 @@
 // so I couldn't wire that link in automatically.
 
 import { useEffect, useState } from "react";
-import { getFirestore, collection, getDocs, doc, updateDoc, orderBy, query, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, getDocs, doc, updateDoc, deleteDoc, writeBatch, orderBy, query, serverTimestamp } from "firebase/firestore";
 
 const db = getFirestore();
 
@@ -30,6 +30,9 @@ export default function AdmissionsIndex() {
   const [loading, setLoading] = useState(true);
   const [downloadingPath, setDownloadingPath] = useState(null);
   const [confirmingRef, setConfirmingRef] = useState(null);
+  const [deletingRef, setDeletingRef] = useState(null);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [deleteAllText, setDeleteAllText] = useState("");
 
   useEffect(() => {
     loadApplications();
@@ -113,11 +116,78 @@ export default function AdmissionsIndex() {
     }
   };
 
+  const deleteApplication = async (app) => {
+    if (!window.confirm(`Delete ${app.student?.fullName}'s application (${app.applicationRef})? This only removes the Firestore record — the documents already committed to GitHub (Cresthivedocument) are NOT deleted and would need removing there separately. This cannot be undone here.`)) {
+      return;
+    }
+    setDeletingRef(app.applicationRef);
+    try {
+      await deleteDoc(doc(db, "applications", app.applicationRef));
+      await loadApplications();
+    } catch (err) {
+      console.error(err);
+      alert("Could not delete this application. Check the console for details.");
+    } finally {
+      setDeletingRef(null);
+    }
+  };
+
+  const deleteAllApplications = async () => {
+    if (deleteAllText.trim().toUpperCase() !== "DELETE") {
+      alert('Type DELETE in the box (exactly, all caps) to confirm.');
+      return;
+    }
+    if (!window.confirm(`This will permanently delete all ${applications.length} application record(s) from Firestore. The documents already committed to GitHub (Cresthivedocument) will NOT be deleted and would need removing there separately. Continue?`)) {
+      return;
+    }
+
+    setDeletingAll(true);
+    try {
+      // Firestore batched writes cap at 500 operations, so chunk just in case.
+      const chunkSize = 450;
+      for (let i = 0; i < applications.length; i += chunkSize) {
+        const chunk = applications.slice(i, i + chunkSize);
+        const batch = writeBatch(db);
+        chunk.forEach((app) => batch.delete(doc(db, "applications", app.applicationRef)));
+        await batch.commit();
+      }
+      setDeleteAllText("");
+      await loadApplications();
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong deleting applications. Check the console for details.");
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   if (loading) return <div className="p-6">Loading applications...</div>;
 
   return (
     <div className="p-6">
       <h2 className="text-2xl mb-4">Admissions</h2>
+
+      {applications.length > 0 && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-red-700">
+            Danger zone: type <strong>DELETE</strong> to enable bulk delete of all {applications.length} application(s).
+          </span>
+          <input
+            type="text"
+            className="border border-red-300 rounded px-2 py-1 text-sm"
+            value={deleteAllText}
+            onChange={(e) => setDeleteAllText(e.target.value)}
+            placeholder="Type DELETE"
+          />
+          <button
+            className="bg-red-600 text-white px-3 py-1 rounded text-sm font-semibold disabled:opacity-50"
+            onClick={deleteAllApplications}
+            disabled={deletingAll || deleteAllText.trim().toUpperCase() !== "DELETE"}
+          >
+            {deletingAll ? "Deleting..." : "Delete All Applications"}
+          </button>
+        </div>
+      )}
 
       {applications.length === 0 ? (
         <p>No applications submitted yet.</p>
@@ -189,6 +259,13 @@ export default function AdmissionsIndex() {
                       {confirmingRef === app.applicationRef ? "Confirming..." : "Mark as Paid"}
                     </button>
                   )}
+                  <button
+                    className="bg-red-100 text-red-700 px-3 py-1 rounded text-sm font-semibold mt-1"
+                    onClick={() => deleteApplication(app)}
+                    disabled={deletingRef === app.applicationRef}
+                  >
+                    {deletingRef === app.applicationRef ? "Deleting..." : "Delete"}
+                  </button>
                 </td>
               </tr>
             ))}
