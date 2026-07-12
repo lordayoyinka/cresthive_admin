@@ -85,7 +85,7 @@ export default function AdmissionsIndex() {
         confirmedAt: serverTimestamp(),
       });
 
-      const recipientEmail = app.mother?.email || app.father?.email;
+      const recipientEmail = app.contactEmail;
       const emailRes = await fetch("/api/send-admission-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -144,7 +144,7 @@ export default function AdmissionsIndex() {
                 <td className="p-2">
                   {app.father?.phone}
                   <br />
-                  <span className="text-sm text-gray-500">{app.mother?.email || app.father?.email}</span>
+                  <span className="text-sm text-gray-500">{app.contactEmail}</span>
                 </td>
                 <td className="p-2">
                   <span
