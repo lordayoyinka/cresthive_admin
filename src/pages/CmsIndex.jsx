@@ -213,34 +213,37 @@ const CmsIndex = () => {
 
   const handleAddTestimonial = (prevData) => {
     setIndexPageData(() => {
+      // Newest post goes to index 0; every existing post shifts down by
+      // one. Since handleSaveChanges re-serializes this object by
+      // ascending key order, index 0 == newest, so it renders/shows first
+      // both here and on the public site (as long as the public site
+      // renders `testimonials` in array order).
+      const existing = { ...prevData.testimonials };
+      const orderedExisting = Object.keys(existing)
+        .sort((a, b) => Number(a) - Number(b))
+        .map((key) => existing[key]);
 
+      const newPost = {
+        parentName: "",
+        parentOccupation: "",
+        testimonialText: "",
+        testimonialimg: "",
+        testimonialimg2: "",
+        testimonialimg3: "",
+      };
 
+      const reordered = [newPost, ...orderedExisting];
 
-      // for (var i = 0; i < prevData.teachers.length; i++) {
-      //   console.log(i)
-      //   const temp = prevData.teachers;
-      //   prev[i] = temp[i]
-      // }
+      const prev = {};
+      reordered.forEach((item, i) => {
+        prev[i] = item;
+      });
 
-      const prev = { ...prevData.testimonials, }
-      const propertiesArray =
-        Object.getOwnPropertyNames(prev);
-
-      const count = propertiesArray.length;
-      console.log("lenght", count)
-
-      prev[count] = { parentName: "", parentOccupation: "", testimonialText: "", testimonialimg: "", testimonialimg2: "", testimonialimg3: "" }
-
-
-
-        console.log("prev", prev)
-      return ({
+      console.log("prev", prev);
+      return {
         ...prevData,
-        testimonials:
-          prev,
-
-
-      })
+        testimonials: prev,
+      };
     });
   };
 
