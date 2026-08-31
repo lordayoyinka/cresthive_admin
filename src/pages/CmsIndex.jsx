@@ -213,7 +213,7 @@ const CmsIndex = () => {
 
   const handleAddTestimonial = (prevData) => {
     setIndexPageData(() => {
-      // Newest post goes to index 0; every existing post shifts down by w
+      // Newest post goes to index 0; every existing post shifts down by
       // one. Since handleSaveChanges re-serializes this object by
       // ascending key order, index 0 == newest, so it renders/shows first
       // both here and on the public site (as long as the public site
