@@ -9,7 +9,39 @@ import {
   updateDoc,
   setDoc,
 } from "firebase/firestore";
-import { ref, getStorage, uploadBytes, getDownloadURL } from "firebase/storage";
+
+// Converts a File object to a base64 string (without the data: prefix)
+const fileToBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+// Uploads a file to the crestlandpage GitHub repo via our API route
+// and returns a public CDN URL for it (no Firebase Storage involved) —
+// same approach used for teacher photos and blog images on the index page.
+const uploadToGitHub = async (file, folder, safeName) => {
+  const contentBase64 = await fileToBase64(file);
+  const ext = file.name.split(".").pop();
+  const filename = `${safeName}.${ext}`;
+
+  const res = await fetch("/api/upload-to-github", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ folder, filename, contentBase64 }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`GitHub upload failed: ${errText}`);
+  }
+
+  const { url } = await res.json();
+  return url;
+};
+
 const CmsAbout = () => {
 
   const db = getFirestore();
@@ -40,12 +72,11 @@ const CmsAbout = () => {
 
   }, []);
 
-  const storage = getStorage();
-
-
-
   const [aboutPageData, setAboutPageData] = useState(null);
   const [isEditing, setEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState(null);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,32 +105,71 @@ const CmsAbout = () => {
     }));
   };
 
-  const handleimageChange = async (field, value) => {
+  // A director photo field can be either a saved URL string (already on
+  // GitHub) or a freshly-picked File object waiting to be uploaded on
+  // Save. This picks the right thing to put in the <img src>.
+  const getPreviewSrc = (value) => {
+    if (!value) return "";
+    if (value instanceof File) return URL.createObjectURL(value);
+    return value;
+  };
+
+
+  // Just holds the picked File in state — it isn't uploaded to GitHub
+  // until Save Changes is clicked, same pattern as staff photos on the
+  // index page CMS. The <img> preview below falls back to the last
+  // saved URL until then.
+  const handleimageChange = (field, value) => {
     const file = value.target.files[0];
-
-
-    const storageRef = ref(storage, "indeximages");
-    const date = new Date()
-    const fileRef = ref(storageRef, date.toString());
-    await uploadBytes(fileRef, file);
-    const downloadURL = await getDownloadURL(fileRef);
-
+    if (!file) return;
     setAboutPageData((prevData) => ({
       ...prevData,
-      [field]: downloadURL,
+      [field]: file,
     }));
-
-
   };
 
   const handleSaveChanges = async () => {
+    setSaveError(null);
+
+    const imageFields = ["basicphoto", "prebasicphoto", "collegephoto"];
+    const picturesToUpload = imageFields.filter(
+      (f) => aboutPageData[f] instanceof File
+    ).length;
+
+    setIsSaving(true);
+    setSaveProgress(
+      picturesToUpload > 0 ? { total: picturesToUpload, done: 0 } : null
+    );
+
     try {
+      const updatedData = { ...aboutPageData };
+
+      await Promise.all(
+        imageFields.map(async (field) => {
+          const value = aboutPageData[field];
+          if (value instanceof File) {
+            const url = await uploadToGitHub(value, "directors", field);
+            updatedData[field] = url;
+            setSaveProgress((prev) =>
+              prev ? { ...prev, done: prev.done + 1 } : prev
+            );
+          }
+        })
+      );
+
       const docRef = doc(db, 'cms', 'aboutPage');
-      await setDoc(docRef, aboutPageData);
+      await setDoc(docRef, updatedData);
+      setAboutPageData(updatedData);
       setEditing(false);
       console.log('Data saved successfully!');
     } catch (error) {
       console.error('Error saving data:', error);
+      setSaveError(
+        "Save failed — one or more director photos didn't upload. Nothing was changed on the live site. Please try again."
+      );
+    } finally {
+      setIsSaving(false);
+      setSaveProgress(null);
     }
   };
 
@@ -192,7 +262,7 @@ const CmsAbout = () => {
 
               <p>Director of School Picture</p>
               <img
-                src={aboutPageData.basicphoto}
+                src={getPreviewSrc(aboutPageData.basicphoto)}
                 className="rounded-md w-36 h-36 object-cover"
               />
 
@@ -290,7 +360,7 @@ const CmsAbout = () => {
 
 
             <img
-              src={aboutPageData.prebasicphoto}
+              src={getPreviewSrc(aboutPageData.prebasicphoto)}
               className="rounded-md w-36 h-36 object-cover"
             />
 
@@ -364,7 +434,7 @@ const CmsAbout = () => {
 
 
             <img
-              src={aboutPageData.collegephoto}
+              src={getPreviewSrc(aboutPageData.collegephoto)}
               className="rounded-md w-36 h-36 object-cover"
             />
 
@@ -415,9 +485,27 @@ const CmsAbout = () => {
 
           </div>
 
+          {saveError && (
+            <p className="text-red-600 text-sm m-4 max-w-md">{saveError}</p>
+          )}
+          {isSaving && (
+            <p className="text-sm text-gray-600 m-4">
+              {saveProgress
+                ? `Uploading photos to GitHub... (${saveProgress.done}/${saveProgress.total})`
+                : "Saving..."}
+              {" "}Please don't close or navigate away.
+            </p>
+          )}
+
           {isEditing ? (
-            <button className="bg-green-500 text-white m-4 py-2 px-4 rounded" onClick={handleSaveChanges}>
-              Save Changes
+            <button
+              className={`text-white m-4 py-2 px-4 rounded ${
+                isSaving ? "bg-green-300 cursor-not-allowed" : "bg-green-500"
+              }`}
+              onClick={handleSaveChanges}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving..." : "Save Changes"}
             </button>
           ) : (
             <button className="bg-blue-500 text-white m-4 py-2 px-4 rounded" onClick={() => setEditing(true)}>
