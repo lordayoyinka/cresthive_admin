@@ -46,6 +46,10 @@ const uploadToGitHub = async (file, folder, safeName) => {
 const CmsIndex = () => {
   const [indexPageData, setIndexPageData] = useState(null);
   const [isEditing, setEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  // { total: number, done: number } while image uploads are in flight
+  const [saveProgress, setSaveProgress] = useState(null);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -249,70 +253,76 @@ const CmsIndex = () => {
 
 
   const handleSaveChanges = async () => {
+    setSaveError(null);
+
+    if (!indexPageData.teachers) {
+      setSaveError("Teachers object is null or undefined.");
+      console.error("Error saving data: Teachers object is null or undefined.");
+      return;
+    }
+
+    // Convert teachers object to an array
+    const teachersArray = Object.keys(indexPageData.teachers).map((key) => {
+      const teacher = indexPageData.teachers[key];
+      return { key, ...teacher }; // Include the key as a property
+    });
+
+    const testimonialsArray = Object.keys(indexPageData.testimonials).map((key) => {
+      const testimonial = indexPageData.testimonials[key];
+      return { key, ...testimonial }; // Include the key as a property
+    });
+
+    console.log("ta", testimonialsArray)
+
+    // How many pictures actually need uploading (new File objects only —
+    // teachers whose picture is already a saved URL don't count).
+    const picturesToUpload = teachersArray.filter(
+      (t) => t.teacherPicture instanceof File
+    ).length;
+
+    setIsSaving(true);
+    setSaveProgress(
+      picturesToUpload > 0 ? { total: picturesToUpload, done: 0 } : null
+    );
+
     try {
-      const promises = [];
-      const promises2 = [];
-      console.log("indat1", indexPageData)
-
-      // Check if teachers is defined and not null
-      if (indexPageData.teachers) {
-        // Convert teachers object to an array
-        const teachersArray = Object.keys(indexPageData.teachers).map((key) => {
-          const teacher = indexPageData.teachers[key];
-          return { key, ...teacher }; // Include the key as a property
-        });
-
-        const testimonialsArray = Object.keys(indexPageData.testimonials).map((key) => {
-          const testimonial = indexPageData.testimonials[key];
-          return { key, ...testimonial }; // Include the key as a property
-        });
-
-        console.log("ta", testimonialsArray)
-
-        // Upload teacher/staff pictures to the crestlandpage GitHub repo (not Firebase Storage).
-        // Blog images are now plain URL strings typed into the CMS, so they need
-        // no upload step — testimonialsArray already holds the final values.
-        const teacherPicturesPromises = teachersArray.map(async (teacher) => {
-          if (teacher.teacherPicture instanceof File) {
-            const safeName = `${teacher.teacherName}_${teacher.key}`.replace(/[^a-zA-Z0-9_-]/g, "-");
-            const url = await uploadToGitHub(teacher.teacherPicture, "teachers", safeName);
-            return { ...teacher, teacherPicture: url };
-          }
-          return teacher;
-        });
-        promises.push(Promise.all(teacherPicturesPromises));
-        promises2.push(Promise.resolve(testimonialsArray));
-
-        // Save data to Firestore
-        const docRef = doc(db, "cms", "indexPage");
-        const updatedData = await Promise.all(promises);
-        const updatedData2 = await Promise.all(promises2);
-
-        console.log(updatedData, "prom")
-        console.log(updatedData2, "prom2")
-
-        // Check if teachers is still defined and not null after uploading pictures
-        if (updatedData[0]) {
-          const updatedTeachersArray = updatedData[0];
-          const updatedBlogArray = updatedData2[0];
-
-          // Directly use the updated teachers array
-          await updateDoc(docRef, { ...indexPageData, teachers: updatedTeachersArray, testimonials: updatedBlogArray });
-
-          setEditing(false);
-          console.log('Data saved successfully!');
-        } else {
-          console.error(
-            "Error saving data: Teachers object is null or undefined."
+      // Upload teacher/staff pictures to the crestlandpage GitHub repo (not Firebase Storage).
+      // Blog images are now plain URL strings typed into the CMS, so they need
+      // no upload step — testimonialsArray already holds the final values.
+      const teacherPicturesPromises = teachersArray.map(async (teacher) => {
+        if (teacher.teacherPicture instanceof File) {
+          const safeName = `${teacher.teacherName}_${teacher.key}`.replace(/[^a-zA-Z0-9_-]/g, "-");
+          const url = await uploadToGitHub(teacher.teacherPicture, "teachers", safeName);
+          // Tick the progress counter up as each individual upload finishes
+          // (they run in parallel, so these can land in any order).
+          setSaveProgress((prev) =>
+            prev ? { ...prev, done: prev.done + 1 } : prev
           );
+          return { ...teacher, teacherPicture: url };
         }
-      } else {
-        console.error(
-          "Error saving data: Teachers object is null or undefined."
-        );
-      }
+        return teacher;
+      });
+
+      const updatedTeachersArray = await Promise.all(teacherPicturesPromises);
+
+      // Save data to Firestore
+      const docRef = doc(db, "cms", "indexPage");
+      await updateDoc(docRef, {
+        ...indexPageData,
+        teachers: updatedTeachersArray,
+        testimonials: testimonialsArray,
+      });
+
+      setEditing(false);
+      console.log('Data saved successfully!');
     } catch (error) {
       console.error("Error saving data:", error);
+      setSaveError(
+        "Save failed — one or more images didn't upload. Nothing was changed on the live site. Please try again."
+      );
+    } finally {
+      setIsSaving(false);
+      setSaveProgress(null);
     }
   };
 
@@ -1040,13 +1050,27 @@ const CmsIndex = () => {
       )}
 
 
-      <div className="flex justify-end flex-1 p-4">
+      <div className="flex flex-col items-end gap-2 flex-1 p-4">
+        {saveError && (
+          <p className="text-red-600 text-sm max-w-md text-right">{saveError}</p>
+        )}
+        {isSaving && (
+          <p className="text-sm text-gray-600">
+            {saveProgress
+              ? `Uploading images to GitHub... (${saveProgress.done}/${saveProgress.total})`
+              : "Saving..."}
+            {" "}Please don't close or navigate away.
+          </p>
+        )}
         {isEditing ? (
           <button
-            className="bg-green-500 text-white py-2 px-4 rounded"
+            className={`py-2 px-4 rounded text-white ${
+              isSaving ? "bg-green-300 cursor-not-allowed" : "bg-green-500"
+            }`}
             onClick={handleSaveChanges}
+            disabled={isSaving}
           >
-            Save Changes
+            {isSaving ? "Saving..." : "Save Changes"}
           </button>
         ) : (
           <button
