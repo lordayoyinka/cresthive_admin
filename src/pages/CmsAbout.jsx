@@ -78,6 +78,8 @@ const CmsAbout = () => {
   const [saveProgress, setSaveProgress] = useState(null);
   const [saveError, setSaveError] = useState(null);
 
+  const emptyAdmin = () => ({ adminName: "", adminRole: "", adminPicture: "" });
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -85,8 +87,14 @@ const CmsAbout = () => {
         const docSnapshot = await getDoc(docRef);
 
         if (docSnapshot.exists) {
-          setAboutPageData(docSnapshot.data());
-          console.log('Document found', docSnapshot.data());
+          const data = docSnapshot.data();
+          // Always exactly 4 administrator slots, even on first load.
+          const administrators =
+            Array.isArray(data.administrators) && data.administrators.length === 4
+              ? data.administrators
+              : [emptyAdmin(), emptyAdmin(), emptyAdmin(), emptyAdmin()];
+          setAboutPageData({ ...data, administrators });
+          console.log('Document found', data);
         } else {
           console.log('Document not found');
         }
@@ -103,6 +111,24 @@ const CmsAbout = () => {
       ...prevData,
       [field]: value,
     }));
+  };
+
+  const handleAdminChange = (index, field, value) => {
+    setAboutPageData((prevData) => {
+      const administrators = [...prevData.administrators];
+      administrators[index] = { ...administrators[index], [field]: value };
+      return { ...prevData, administrators };
+    });
+  };
+
+  const handleAdminPhotoChange = (index, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setAboutPageData((prevData) => {
+      const administrators = [...prevData.administrators];
+      administrators[index] = { ...administrators[index], adminPicture: file };
+      return { ...prevData, administrators };
+    });
   };
 
   // A director photo field can be either a saved URL string (already on
@@ -132,9 +158,12 @@ const CmsAbout = () => {
     setSaveError(null);
 
     const imageFields = ["basicphoto", "prebasicphoto", "collegephoto"];
-    const picturesToUpload = imageFields.filter(
-      (f) => aboutPageData[f] instanceof File
+    const adminPhotosToUpload = (aboutPageData.administrators || []).filter(
+      (a) => a.adminPicture instanceof File
     ).length;
+    const picturesToUpload =
+      imageFields.filter((f) => aboutPageData[f] instanceof File).length +
+      adminPhotosToUpload;
 
     setIsSaving(true);
     setSaveProgress(
@@ -157,6 +186,21 @@ const CmsAbout = () => {
         })
       );
 
+      const updatedAdministrators = await Promise.all(
+        (aboutPageData.administrators || []).map(async (admin, i) => {
+          if (admin.adminPicture instanceof File) {
+            const safeName = `admin-${i}-${(admin.adminName || "staff").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+            const url = await uploadToGitHub(admin.adminPicture, "administrators", safeName);
+            setSaveProgress((prev) =>
+              prev ? { ...prev, done: prev.done + 1 } : prev
+            );
+            return { ...admin, adminPicture: url };
+          }
+          return admin;
+        })
+      );
+      updatedData.administrators = updatedAdministrators;
+
       const docRef = doc(db, 'cms', 'aboutPage');
       await setDoc(docRef, updatedData);
       setAboutPageData(updatedData);
@@ -165,7 +209,7 @@ const CmsAbout = () => {
     } catch (error) {
       console.error('Error saving data:', error);
       setSaveError(
-        "Save failed — one or more director photos didn't upload. Nothing was changed on the live site. Please try again."
+        "Save failed — one or more photos didn't upload. Nothing was changed on the live site. Please try again."
       );
     } finally {
       setIsSaving(false);
@@ -473,6 +517,59 @@ const CmsAbout = () => {
 
 
             </div>
+
+            {/* School Administration — 4 fixed profiles, shown on the About
+                page before the Teachers section */}
+            <div className="mt-16 pt-10 border-t-2">
+              <h2 className="text-3xl mb-6">School Administration</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {(aboutPageData.administrators || []).map((admin, i) => (
+                  <div key={i} className="border-2 rounded-lg p-4">
+                    <p className="font-semibold mb-2">Administrator {i + 1}</p>
+
+                    <label className="block text-gray-600 mb-1">Name</label>
+                    {isEditing ? (
+                      <input
+                        className="border-2 rounded-lg p-2 mb-3 w-full border-blue-500 focus:outline-none"
+                        type="text"
+                        value={admin.adminName || ""}
+                        onChange={(e) => handleAdminChange(i, "adminName", e.target.value)}
+                      />
+                    ) : (
+                      <p className="mb-3">{admin.adminName || "Nothing here yet!"}</p>
+                    )}
+
+                    <label className="block text-gray-600 mb-1">Role</label>
+                    {isEditing ? (
+                      <input
+                        className="border-2 rounded-lg p-2 mb-3 w-full border-blue-500 focus:outline-none"
+                        type="text"
+                        value={admin.adminRole || ""}
+                        onChange={(e) => handleAdminChange(i, "adminRole", e.target.value)}
+                      />
+                    ) : (
+                      <p className="mb-3">{admin.adminRole || "Nothing here yet!"}</p>
+                    )}
+
+                    <img
+                      src={getPreviewSrc(admin.adminPicture)}
+                      className="rounded-md w-24 h-24 object-cover mb-2"
+                    />
+                    {isEditing && (
+                      <div>
+                        <label className="block text-gray-600 mb-1">Add Photo</label>
+                        <input
+                          type="file"
+                          onChange={(e) => handleAdminPhotoChange(i, e)}
+                          className="w-full border border-gray-300 rounded-lg py-2 px-3 focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
 
 
 
