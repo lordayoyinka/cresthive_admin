@@ -590,7 +590,7 @@ const CmsAbout = () => {
               {saveProgress
                 ? `Uploading photos to GitHub... (${saveProgress.done}/${saveProgress.total})`
                 : "Saving..."}
-              {" "}Please don't close or navigate away.
+              {" "}Please don't close or navigate away okay.
             </p>
           )}
 
