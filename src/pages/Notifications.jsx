@@ -3,11 +3,11 @@ import { auth2 } from "@/firebase/config";
 import { getAuth } from "firebase/auth";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, getFirestore } from "firebase/firestore";
+import { useSession } from "@/context/SessionContext";
 
 const Notifications = () => {
 
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
 

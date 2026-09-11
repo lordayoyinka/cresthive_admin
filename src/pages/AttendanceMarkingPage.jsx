@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import {
+import { useSession } from "@/context/SessionContext";
   getFirestore,
   doc,
   setDoc,
@@ -14,8 +15,7 @@ const db = getFirestore();
 
 const AttendanceMarkingPage = () => {
 
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
 

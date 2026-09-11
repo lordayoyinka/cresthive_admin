@@ -12,11 +12,11 @@ import {
 import { getFirestore, updateDoc, doc, getDoc } from "firebase/firestore";
 import { data } from "autoprefixer";
 import { useRouter } from "next/router";
+import { useSession } from "@/context/SessionContext";
 
 const ReportActivity = () => {
 
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
 

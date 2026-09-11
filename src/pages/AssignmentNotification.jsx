@@ -12,12 +12,12 @@ import {
   arrayUnion,
 } from "firebase/firestore";
 import { data } from "autoprefixer";
+import { useSession } from "@/context/SessionContext";
 
 const AssignmentNotificationPage = () => {
   const [loader, setloader] = useState(false);
 
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
 

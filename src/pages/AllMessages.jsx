@@ -4,6 +4,7 @@ import { collection, query, orderBy, getDocs, where } from 'firebase/firestore';
 import { auth2 } from '@/firebase/config';
 import { getFirestore } from 'firebase/firestore';
 import Loading from '@/components/Loading';
+import { useSession } from "@/context/SessionContext";
 
 const db = getFirestore();
 
@@ -17,8 +18,7 @@ const AdminMessages = () => {
   const [adminUser, setadminuser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const year = localStorage.getItem('year');
-  const term = localStorage.getItem('term');
+  const { year, term } = useSession();
 
   useEffect(() => {
     if (auth2) {

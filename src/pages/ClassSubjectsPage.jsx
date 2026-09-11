@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 import { useRouter } from "next/router";
 import Loading from "@/components/Loading";
+import { useSession } from "@/context/SessionContext";
 
 const extractTextBeforeFirstPeriod = (inputString) => {
   const parts = inputString.split(".");
@@ -22,8 +23,7 @@ const ClassSubjectsPage = () => {
   const [loader, setloader] = useState(false);
 
 
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
   const router = useRouter();

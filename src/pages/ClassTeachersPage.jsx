@@ -12,13 +12,13 @@ import {
 import { useRouter } from "next/router";
 import { merge } from "lodash";
 import Loading from "@/components/Loading";
+import { useSession } from "@/context/SessionContext";
 
 const ClassTeachersPage = () => {
   const [loader, setloader] = useState(false);
 
 
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
 

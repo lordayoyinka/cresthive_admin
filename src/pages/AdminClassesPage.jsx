@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { getFirestore, collection, getDocs, deleteDoc, doc, setDoc, addDoc } from 'firebase/firestore';
 import { useRouter } from 'next/router';
 import Loading from '@/components/Loading';
+import { useSession } from "@/context/SessionContext";
 
 const AdminClassesPage = ({ user }) => {
 
 
   const [loader, setloader] = useState(false);
 
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
   const [classes, setClasses] = useState([]);

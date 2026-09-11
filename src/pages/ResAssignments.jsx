@@ -17,13 +17,13 @@ import {
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useRouter } from "next/router";
 import Loading from "@/components/Loading";
+import { useSession } from "@/context/SessionContext";
 
 const ResDocs = () => {
   const [loader, setloader] = useState(false);
 
 
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
   

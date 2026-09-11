@@ -2,13 +2,13 @@ import React, { useEffect, useState } from "react";
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import { useRouter } from "next/router";
 import Loading from "@/components/Loading";
+import { useSession } from "@/context/SessionContext";
 
 const StudentProfilePage = () => {
   const [loader, setloader] = useState(false);
 
   
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
 
