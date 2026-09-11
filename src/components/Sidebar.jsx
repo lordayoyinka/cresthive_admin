@@ -20,6 +20,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, getFirestore } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/router";
+import SessionSwitcher from "@/components/SessionSwitcher";
 
 
 
@@ -31,6 +32,12 @@ const Sidebar = ({ children }) => {
   const [toggleon, setToggleOn] = useState(false);
   const [navigationadmin, setNavigation] = useState([
     { name: "Dashboard", icon: HomeIcon, href: "/Maindash", current: true },
+    {
+      name: "Academic Session",
+      icon: DocumentTextIcon,
+      href: "./AcademicSessions",
+      current: false,
+    },
     {
       name: "Classes",
       icon: UsersIcon,
@@ -322,10 +329,11 @@ const Sidebar = ({ children }) => {
 
       <div className="flex-grow-col w-full h-full overscroll-y-auto overflow-x-none">
         <div className="flex p-4 items-center justify-end md:justify-between  flex-grow bg-white ">
-        <div className="hidden md:flex">
+        <div className="hidden md:flex items-center gap-4">
             <p onClick={handleGoBack} className="rounded-2xl px-4 py-2 text-white bg-green-700"> 
               ← Go back
             </p>
+            <SessionSwitcher />
           </div>
 
 

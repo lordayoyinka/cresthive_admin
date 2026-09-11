@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import OnboardHolder from './OnboardHolder';
 import SignIn from "./SignIn"
 import { useRouter } from 'next/router';
+import { SessionProvider } from '@/context/SessionContext';
 
 
 
@@ -47,9 +48,11 @@ export default function App({ Component, pageProps, pageProps2 }) {
   return (
     <div className="flex w-full overscroll-y-auto">
       {user && user.uid !== 'default' ? (
-        <Sidebar>
-          <Component {...pageProps} user={user} />
-        </Sidebar>
+        <SessionProvider>
+          <Sidebar>
+            <Component {...pageProps} user={user} />
+          </Sidebar>
+        </SessionProvider>
       ) : (
        <SignIn />
       )}
