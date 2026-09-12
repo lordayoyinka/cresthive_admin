@@ -1,5 +1,4 @@
 import {
-  getFirestore,
   collection,
   getDocs,
   getDoc,
@@ -9,8 +8,7 @@ import {
   where,
   orderBy,
 } from "firebase/firestore";
-
-const db = getFirestore();
+import { firestore as db } from "./config";
 
 export const TERMS = ["1st", "2nd", "3rd"];
 

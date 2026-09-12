@@ -1,14 +1,12 @@
 import { useState, useEffect } from "react";
 import {
-  getFirestore,
   collection,
   getDoc,
   doc,
   updateDoc,
   setDoc,
 } from "firebase/firestore";
-
-const db = getFirestore();
+import { firestore as db } from "@/firebase/config";
 
 // Converts a File object to a base64 string (without the data: prefix)
 const fileToBase64 = (file) =>

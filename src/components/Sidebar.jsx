@@ -14,10 +14,9 @@ import { BellIcon } from "@heroicons/react/outline";
 import { Menu } from "@headlessui/react";
 import { useState, useEffect } from "react";
 import { StorageErrorCode } from "firebase/storage";
-import { auth2 } from "@/firebase/config";
-import { getAuth } from "firebase/auth";
+import { auth2, firestore } from "@/firebase/config";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, getFirestore } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/router";
 import SessionSwitcher from "@/components/SessionSwitcher";
@@ -139,7 +138,7 @@ const Sidebar = ({ children }) => {
 
 
   const setprofiledp = async (uid) => {
-    const db = getFirestore();
+    const db = firestore; // was getFirestore() with no args, which can crash during server-side build if Firebase hasn't been initialized yet in that bundle
 
 
 
@@ -168,7 +167,7 @@ const Sidebar = ({ children }) => {
   const handleLogout = async () => {
     console.log("s o")
 
-    const auth = getAuth();
+    const auth = auth2; // was getAuth() with no args, same build-time risk
     console.log("signing out")
 
     await signOut(auth);
