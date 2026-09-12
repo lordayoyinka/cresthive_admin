@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import {
-import { useSession } from "@/context/SessionContext";
   getFirestore,
   doc,
   setDoc,
@@ -10,6 +9,7 @@ import { useSession } from "@/context/SessionContext";
   arrayRemove,
   getDoc,
 } from 'firebase/firestore';
+import { useSession } from "@/context/SessionContext";
 
 const db = getFirestore();
 
