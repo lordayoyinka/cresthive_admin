@@ -185,11 +185,6 @@ const Sidebar = ({ children }) => {
 
   const { year, term } = useSession();
 
-  if (!year || !term) {
-
-    signOut(auth2);
-  }
-
 
 
   return (
