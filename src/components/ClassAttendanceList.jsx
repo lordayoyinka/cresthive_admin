@@ -1,3 +1,4 @@
+import { useSession } from "@/context/SessionContext";
 import React from 'react'
 
 import { useLayoutEffect, useRef, useState } from 'react'
@@ -23,8 +24,7 @@ function classNames(...classes) {
 const ClassAttendanceList = () => {
 
   
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
 

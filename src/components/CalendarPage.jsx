@@ -1,3 +1,4 @@
+import { useSession } from "@/context/SessionContext";
 import React, { useState, useRef, useEffect } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -15,8 +16,7 @@ const db = getFirestore();
 
 const CalendarPage = () => {
 
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
 

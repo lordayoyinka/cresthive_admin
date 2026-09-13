@@ -1,3 +1,4 @@
+import { useSession } from "@/context/SessionContext";
 import React, { useState, useEffect } from 'react';
 import { getFirestore, collection, getDocs, deleteDoc, doc, setDoc, addDoc } from 'firebase/firestore';
 import { useRouter } from 'next/router';
@@ -17,8 +18,7 @@ const extractTextBeforeFirstPeriod = (inputString) => {
 
 const Msubjects = () => {
   
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
 

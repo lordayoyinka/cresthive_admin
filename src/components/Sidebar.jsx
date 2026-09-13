@@ -1,3 +1,4 @@
+import { useSession } from "@/context/SessionContext";
 /* This example requires Tailwind CSS v2.0+ */
 import {
   HomeIcon,
@@ -182,8 +183,7 @@ const Sidebar = ({ children }) => {
   };
 
 
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
   if (!year || !term) {
 

@@ -1,3 +1,4 @@
+import { useSession } from "@/context/SessionContext";
 import React, {useState, useEffect} from 'react'
 import { auth2 } from "@/firebase/config";
 import { getAuth } from "firebase/auth";
@@ -11,8 +12,7 @@ import { doc, getDoc, getFirestore } from "firebase/firestore";
 
 const MNotifiations = () => {
   
-  const year = localStorage.getItem("year");
-  const term = localStorage.getItem("term");
+  const { year, term } = useSession();
 
 
 
