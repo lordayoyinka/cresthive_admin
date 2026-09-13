@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import {
   getAllSessions,
   createSession,
+  deleteSession,
   setActiveSession,
   sessionIdToLabel,
 } from "@/firebase/sessions";
 import { useSession } from "@/context/SessionContext";
 
 const AcademicSessions = () => {
-  const { refreshSessions, setYear, setTerm } = useSession();
+  const { year, refreshSessions, setYear, setTerm } = useSession();
 
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +18,9 @@ const AcademicSessions = () => {
   const [seedFrom, setSeedFrom] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
+
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState(null);
 
   const loadSessions = async () => {
     setLoading(true);
@@ -68,6 +72,40 @@ const AcademicSessions = () => {
     await setActiveSession(sessionId);
     await refreshSessions();
     await loadSessions();
+  };
+
+  const handleDelete = async (sessionId, label) => {
+    const confirmed = window.confirm(
+      `Delete "${label}"? This can't be undone. It will only work if no classes have been added under it yet.`
+    );
+    if (!confirmed) return;
+
+    setDeleteError(null);
+    setDeletingId(sessionId);
+
+    try {
+      const remaining = await deleteSession(sessionId);
+
+      // If the switcher was currently pointed at the session we just
+      // deleted, move it to whichever session is active now (if any) so
+      // the rest of the admin panel doesn't keep referencing a session
+      // that no longer exists.
+      if (year === sessionId) {
+        const stillActive = remaining.find((s) => s.isActive);
+        if (stillActive) {
+          setYear(stillActive.id);
+          setTerm("1st");
+        }
+      }
+
+      await refreshSessions();
+      await loadSessions();
+    } catch (err) {
+      console.error(err);
+      setDeleteError(err.message || "Something went wrong deleting the session.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -127,6 +165,7 @@ const AcademicSessions = () => {
 
       {/* ---------- Existing sessions ---------- */}
       <h2 className="text-2xl mb-4">All Sessions</h2>
+      {deleteError && <p className="text-red-600 text-sm mb-4 max-w-xl">{deleteError}</p>}
       {loading ? (
         <p>Loading...</p>
       ) : sessions.length === 0 ? (
@@ -146,14 +185,25 @@ const AcademicSessions = () => {
                   {s.isActive ? "Active — default for new logins" : "Inactive"}
                 </p>
               </div>
-              {!s.isActive && (
+              <div className="flex items-center gap-2">
+                {!s.isActive && (
+                  <button
+                    onClick={() => handleSetActive(s.id)}
+                    className="bg-blue-500 text-white py-1 px-3 rounded text-sm"
+                  >
+                    Set as Active
+                  </button>
+                )}
                 <button
-                  onClick={() => handleSetActive(s.id)}
-                  className="bg-blue-500 text-white py-1 px-3 rounded text-sm"
+                  onClick={() => handleDelete(s.id, s.label || sessionIdToLabel(s.id))}
+                  disabled={deletingId === s.id}
+                  className={`py-1 px-3 rounded text-sm text-white ${
+                    deletingId === s.id ? "bg-red-300 cursor-not-allowed" : "bg-red-500"
+                  }`}
                 >
-                  Set as Active
+                  {deletingId === s.id ? "Deleting..." : "Delete"}
                 </button>
-              )}
+              </div>
             </div>
           ))}
         </div>

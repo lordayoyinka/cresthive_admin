@@ -4,6 +4,7 @@ import {
   getDoc,
   doc,
   setDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -108,4 +109,35 @@ export async function createSession({ label, seedFromSessionId }) {
   await setActiveSession(sessionId);
 
   return sessionId;
+}
+
+// Deletes a session's registry entry and its three term documents. Refuses
+// to delete if any classes have already been added under it — Firestore
+// doesn't cascade-delete subcollections, so deleting the parent would
+// silently orphan any classes/students still inside. Remove those first
+// (via the Classes page) if you really need to delete a session that
+// already has data in it.
+export async function deleteSession(sessionId) {
+  for (const term of TERMS) {
+    const classesSnapshot = await getDocs(collection(db, sessionId, term, "classes"));
+    if (!classesSnapshot.empty) {
+      throw new Error(
+        `Can't delete "${sessionIdToLabel(sessionId)}" — it still has classes under its ${term} term. Remove those first, then try again.`
+      );
+    }
+  }
+
+  await Promise.all(TERMS.map((term) => deleteDoc(doc(db, sessionId, term))));
+  await deleteDoc(doc(db, "academicSessions", sessionId));
+
+  // If the deleted session was active, promote the next most recent
+  // remaining session to active, so the admin panel always has one
+  // selected as long as any exist.
+  const remaining = await getAllSessions();
+  const stillHasActive = remaining.some((s) => s.isActive);
+  if (!stillHasActive && remaining.length > 0) {
+    await setActiveSession(remaining[0].id);
+  }
+
+  return remaining;
 }
